@@ -9,12 +9,15 @@ import os
 from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QVBoxLayout, QWidget, QPushButton
 from PyQt5.QtGui import QFont, QPixmap
 from PyQt5.QtCore import Qt
+import scipy.io.wavfile as wav
 import sounddevice as sd
 import soundfile as sf
 import time
 from vosk import Model, KaldiRecognizer
+import vosk
 import wave
 import json
+import pyttsx3
 
 
 
@@ -23,12 +26,49 @@ class Windows10StyleWindow(QMainWindow):
   def __init__(self):
     super().__init__()
 
-    #Create Window with the title "Please select an operating system"
-    self.setWindowTitle("Please select an operating system")
+    #Create Window with the title "Please select a language"
+    self.setWindowTitle("Please select a language")
     self.setGeometry(100, 100, 200, 50) #x, y, width, height
 
     #Remove native title bar for a windows 10 look
     self.setWindowFlags(Qt.FramelessWindowHint)
+    self.setStyleSheet("background-color: #ffffff;") # White background
+
+    #Title Bar
+    self.title_bar = QLabel("Please select a language", self)
+    self.title_bar.setStyleSheet("background-color: #0078d7; color: white; padding: 10px; font-size: 10px;")
+    self.title_bar.setAlignment(Qt.AlignCenter)
+    self.title_bar.setGeometry(0, 0, 200, 20)
+
+    # Main Content
+    self.deutsch_button = QPushButton("Deutsch", self)
+    self.deutsch_button.setStyleSheet("""
+        QPushButton {
+            background-color: #ff4d4d;
+            border: none;
+            color: white;
+            font-size: 12px;
+            padding: 5px 10px;                              
+        }
+        QPushButton:hover {
+            background-color: #e60000;
+        }
+    """)
+    self.deutsch_button.setGeometry(0, 0, 100, 50)
+    self.english_button = QPushButton("English", self)
+    self.english_button.setStyleSheet("""
+        QPushButton {
+            background-color: #ff4d4d;
+            border: none;
+            color: white;
+            font-size: 12px;
+            padding: 5px 10px;                              
+        }
+        QPushButton:hover {
+            background-color: #e60000;
+        }
+    """)
+    self.english_button.setGeometry(100, 0, 100, 50)
       
 
 def install_python():
@@ -77,11 +117,14 @@ def execute_in_terminal():
         subprocess.run(['pip', 'install', 'opencv-python'], check=True)
         subprocess.run(['pip', 'install', 'pyautogui', 'mss'], check=True)
         subprocess.run(['pip', 'install', 'PyQt5'], check=True)
-        subprocess.run(['pip', 'install', 'PyQt5-tools'], check=True)
         subprocess.run(['pip', 'install', 'vosk'], check=True)
+        subprocess.run(['pip', 'install', 'gtts'], check=True)
+        subprocess.run(['wget', 'https://alphacephei.com/vosk/models/vosk-model-small-de-0.15.zip'], check=True)
 
 if __name__ == "__main__":
     execute_in_terminal()
+
+
 
 def start_coaching():
     print("Starting coaching!")
@@ -119,25 +162,74 @@ def analyze_screen(image):
     else:
         print("No walls detected.")
 
-def speak_advice(advice):
-    tts = gTTS(text=advice, lang='en')
-    tts.save("advice.mp3")
-    os.system("mpg321 advice.mp3")  # Or use a different audio player
+#-----Record when speaking-----
+#Parameters
+samplerate = 44100 # Sampling rate
+duration_check = 0.5 # Duration to capture audio in chunks (seconds)
+silence_threshold = 500 # Silence threshold (lower values = more sensitive)
+max_silence_duration = 2 # Max silence duration (seconds)
 
-def record_audio():
-    # Code to record audio using PyAudio
-    # ...
+def is_speaking(audio_chunk):
+    """Check if audio Chunk is below silence threshold"""
+    return np.abs(audio_chunk).mean() > silence_threshold
 
-def listen_and_respond(audio_data):
-    try:
-        r = sr.Recognizer()
-        text = r.recognize_google(audio_data)
-         # Process the text input (e.g., answer questions)
-        print(f"You said: {text}")
-    except sr.UnknownValueError:
-        print("Could not understand audio")
-    except sr.RequestError as e:
-        print(f"Could not request results from Google Speech Recognition service; {e}")
+def record_on_speech():
+    start_time = time.time()
+    audio_chunks = []
+    recording = False
+    silence_start = None # Track when silence starts
+
+    while True:
+        #Record small chunks of audio
+        audio_chunk = sd.rec(
+            int(duration_check * samplerate),
+            samplerate=samplerate,
+            channels=1,
+            dtype="int16",
+        )
+        sd.wait()
+
+        if is_speaking(audio_chunk):
+            if not recording:
+                recording = True # Start recording
+            audio_chunks.append(audio_chunk) # Add audio chunk to the buffer
+            silence_start = None # Reset silence timer
+        else:
+            if recording:
+                if silence_start is None:
+                    silence_start = time.time()
+                elif time.time() - silence_start > max_silence_duration:
+                    break
+
+    # Combinie all audio chunks into a single array
+    audio_data = np.concatenate(audio_chunks, axis=0) if audio_chunks else None
+    # Process audio directly in memory (or return it for further processing)
+    return audio_data
+    
+# Start recording
+audio_data = record_on_speech()
+
+
+
+#-----translate the recording into text-----
+# Initialize the vosk model (The Filename of the currently used vosk model)
+model = vosk.Model("vosk-model-small-de-0.15.zip")
+# Open the audio data as a .wav file
+wf = wave.open(audio_data, "rb")
+# Create the recognizer
+rec = vosk.KaldiRecognizer(model, wf.getframerate())
+# Process the audio file
+while True:
+    data = wf.readframes(4000)
+    if len(data) == 0:
+        break
+    if rec.AcceptWaveform(data):
+        result = rec.Result()
+        Result = json.loads(result)["Text"]
+
+
+    
+
 
 window = tk.Tk()
 window.title("Fortnite AI Coach")
