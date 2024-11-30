@@ -3,6 +3,7 @@ import subprocess
 import sys
 import pyautogui
 import cv2
+import mss
 import numpy as np
 from gtts import gTTS
 import os
@@ -18,6 +19,8 @@ import vosk
 import wave
 import json
 import pyttsx3
+#for testing only
+from plyer import notification
 
 
 
@@ -71,76 +74,50 @@ class Windows10StyleWindow(QMainWindow):
     self.english_button.setGeometry(100, 0, 100, 50)
       
 
+
+#-----Installing Python if not done yet-----
 def install_python():
     #URL to the python installer (Windows)
     python_installer_url = "https://www.python.org/ftp/python/3.11.0/python-3.11.0-amd64.exe"
     installer_path = "python_installer.exe"
 
-    #download the installer
-    print("Downloading Python installer...")
-    subprocess.run(["curl", "-o", installer_path, python_installer_url], 
-                   check=True)
+    #Download the installer
+    subprocess.run(["curl", "-o", installer_path, python_installer_url], check=True)
 
     #Run the installer silently
-    print("Installing Python...")
-    subprocess.run([installer_path, "/quiet", "InstallAllUsers=1", "PrependPath=1"], 
-                   check=True)
+    subprocess.run([installer_path, "/quiet", "InstallAllUsers=1", "PrependPath=1"], check=True)
 
     #Cleanup
     os.remove(installer_path)
-    print("Python installed succsessfully!")
 
 def check_python():
     try:
         subprocess.check_call([sys.executable, '-c', 'import sys'])
-        print("Python is installed!")
     except subprocess.CalledProcessError:
-        print("Python is not installed. Installing...")
         install_python()
-        # Install Python using the appropriate method for your system
-        # Example for Windows using the official installer:
-        # subprocess.run(["powershell", "-Command", "Start-Process -FilePath 'https://www.python.org/ftp/python/3.10.9/python-3.10.9-amd64.exe' -ArgumentList '/quiet /norestart'"])
-        # Note: You may need to adapt this for your specific system and Python version
-        print("Python installation complete!")
 
-# ---open the Terminal and execute commands---
+
+
+# ---Open the Terminal and execute commands---
 def execute_in_terminal():
     #Open a command Prompt and execute a Python command
-    commands = [
-        'echo "Hello from the Terminal!"'
-        'python --version'
-    ]
-    for command in commands:
-        subprocess.run(f"cmd /k {command}", shell=True)
-        subprocess.run(['pip', 'install', 'sounddevice', 'pysoundfile'], check=True)
-        subprocess.run(['pip', 'install', 'pyttsx3'], check=True)
-        subprocess.run(['pip', 'install', 'opencv-python'], check=True)
-        subprocess.run(['pip', 'install', 'pyautogui', 'mss'], check=True)
-        subprocess.run(['pip', 'install', 'PyQt5'], check=True)
-        subprocess.run(['pip', 'install', 'vosk'], check=True)
-        subprocess.run(['pip', 'install', 'gtts'], check=True)
-        subprocess.run(['wget', 'https://alphacephei.com/vosk/models/vosk-model-small-de-0.15.zip'], check=True)
+    subprocess.run(['pip', 'install', 'sounddevice', 'pysoundfile'], check=True)
+    subprocess.run(['pip', 'install', 'pyttsx3'], check=True)
+    subprocess.run(['pip', 'install', 'opencv-python'], check=True)
+    subprocess.run(['pip', 'install', 'pyautogui', 'mss'], check=True)
+    subprocess.run(['pip', 'install', 'PyQt5'], check=True)
+    subprocess.run(['pip', 'install', 'vosk'], check=True)
+    subprocess.run(['pip', 'install', 'gtts'], check=True)
+    subprocess.run(['pip', 'install', 'sip'], check=True)
+    subprocess.run(['wget', 'https://alphacephei.com/vosk/models/vosk-model-small-de-0.15.zip'], check=True)
 
 if __name__ == "__main__":
     execute_in_terminal()
 
 
 
-def start_coaching():
-    print("Starting coaching!")
-    # Add code to start capturing screen and analyzing
-    # You'll need to implement the screen capture and analysis logic here
-    # using pyautogui and cv2
 
-def stop_coaching():
-    print("Stopping coaching!")
-    # Add code to stop capturing screen and analyzing
-
-def open_settings():
-    print("Opening settings!")
-    # Add code to open the settings window (e.g., using a new tk window)
-    # Add code to select monitor, audio input/output here
-
+#-----Main functions for main window, capturing screen, analyzing screen, generating advice, text to speech etc.-----
 def capture_screen():
     # Capture the entire screen
     screenshot = pyautogui.screenshot()
@@ -148,6 +125,7 @@ def capture_screen():
     image = cv2.cvtColor(np.array(screenshot), cv2.COLOR_BGR2RGB)
     return image
 
+shared_variable = {}
 def analyze_screen(image):
     # Add code here to analyze the image and detect objects
     # (e.g., using OpenCV or other computer vision techniques)
@@ -155,12 +133,57 @@ def analyze_screen(image):
     # Example: Detect walls (you'll need to find specific color ranges)
     lower_wall_color = np.array([100, 100, 100])
     upper_wall_color = np.array([150, 150, 150])
-    mask = cv2.inRange(image, lower_wall_color, upper_wall_color)
-    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    if contours:
-        print("Walls detected!")
+    mask_Chest_right = cv2.inRange(image, lower_wall_color, upper_wall_color)
+    shared_variable['contours'] = cv2.findContours(mask_Chest_right, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    
+
+#-----Check if anything was detected-----
+def Chest_detected_right():
+    if shared_variable['contours']:
+        Chest_detected_right = True
     else:
-        print("No walls detected.")
+        Chest_detected_right = False
+
+def Chest_detected_left():
+    if shared_variable['contours']:
+        Chest_detected_left = True
+    else:
+        Chest_detected_left = False
+
+def Chest_detected_front():
+    if shared_variable['contours']:
+        Chest_detected_front = True
+    else:
+        Chest_detected_front = False
+
+def Chest_detected_back():
+    if shared_variable['contours']:
+        Chest_detected_back = True
+    else:
+        Chest_detected_back = False
+
+#-----Generate advice based on what was detected-----
+def generate_advice():
+    if Chest_detected_right == True:
+
+
+
+
+
+
+def start_coaching():
+    # Add code to start capturing screen and analyzing
+    # You'll need to implement the screen capture and analysis logic here
+    # using pyautogui and cv2
+
+def stop_coaching():
+    # Add code to stop capturing screen and analyzing
+
+def open_settings():
+    # Add code to open the settings window (e.g., using a new tk window)
+    # Add code to select monitor, audio input/output here
+
+
 
 #-----Record when speaking-----
 #Parameters
@@ -211,7 +234,7 @@ audio_data = record_on_speech()
 
 
 
-#-----translate the recording into text-----
+#-----Translate the recording into text-----
 # Initialize the vosk model (The Filename of the currently used vosk model)
 model = vosk.Model("vosk-model-small-de-0.15.zip")
 # Open the audio data as a .wav file
@@ -230,17 +253,65 @@ while True:
 
     
 
+#-----Create the Main window-----
+class ResizableWindow(QMainWindow):
+    def __init__(self):
+        super().__init__()
 
-window = tk.Tk()
-window.title("Fortnite AI Coach")
+        # Set initial window properties
+        self.setWindowTitle("Resizable Window with Fixed Resolution") # Set the Window title
+        self.setGeometry(100, 100, 400, 300)  # x, y, width, height
+        self.setMinimumSize(100, 100)  # Optional: Set a minimum size
+        self.setMaximumSize(2550, 1440)
+        
+        # Internal resolution (fixed)
+        self.internal_width = 2550
+        self.internal_height = 1440
 
-start_button = tk.Button(window, text="Start Coaching", command=start_coaching)
-start_button.pack()
+        # Create a label for displaying content (e.g., game screen or UI)
+        self.content_label = QLabel(self)
+        self.content_label.setGeometry(0, 0, self.internal_width, self.internal_height)
 
-stop_button = tk.Button(window, text="Stop Coaching", command=stop_coaching)
-stop_button.pack()
+        # Load an example image (or set up your own content here)
+        pixmap = QPixmap(self.internal_width, self.internal_height)
+        pixmap.fill(Qt.blue)  # Fill with a blue background for demonstration
+        self.content_label.setPixmap(pixmap)
+        self.content_label.setScaledContents(True)  # Enable scaling of content
 
-settings_button = tk.Button(window, text="Settings", command=open_settings)
-settings_button.pack()
+    def resizeEvent(self, event):
+        # Get new window dimensions
+        window_width = self.width()
+        window_height = self.height()
 
-window.mainloop()
+        # Calculate aspect ratio to maintain resolution
+        aspect_ratio = self.internal_width / self.internal_height
+
+        # Adjust content size to fit the window while keeping the aspect ratio
+        if window_width / window_height > aspect_ratio:
+            # Window is wider than the content
+            new_width = int(window_height * aspect_ratio)
+            new_height = window_height
+        else:
+            # Window is taller than the content
+            new_width = window_width
+            new_height = int(window_width / aspect_ratio)
+
+        # Center the content in the window
+        x_offset = (window_width - new_width) // 2
+        y_offset = (window_height - new_height) // 2
+
+        self.content_label.setGeometry(x_offset, y_offset, new_width, new_height)
+
+        # Call the parent class resizeEvent to ensure default behavior
+        super().resizeEvent(event)
+
+# Main function
+def main():
+    app = QApplication(sys.argv)
+    window = ResizableWindow()
+    window.show()
+    sys.exit(app.exec_())
+
+if __name__ == "__main__":
+    main()
+
